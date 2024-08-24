@@ -100,7 +100,8 @@ const JobListScreen = () => {
             const response = await axios.get("https://testapi.getlokalapp.com/common/jobs");
 
             console.log("Response:", response.data);
-            alert(response)
+
+            // alert(response)
 
             // Handle the response data here
         } catch (error) {

@@ -1,127 +1,152 @@
-// import React, { useEffect } from 'react';
-// import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Button } from 'react-native';
-// import { useDispatch, useSelector } from 'react-redux';
-// import NetInfo from '@react-native-community/netinfo';
-// import { fetchJobs, expandItem, incrementPage, resetPage } from "../redux/store";
-
-// const JobListScreen = () => {
-//   const dispatch = useDispatch();
-//   const { jobs, expandedItem, isLoading, error, page } = useSelector((state) => state.jobs);
-
-//   useEffect(() => {
-//     dispatch(fetchJobs());
-//   }, [page]);
-
-//   const handleExpand = (index) => {
-//     dispatch(expandItem(index));
-//   };
-
-//   const renderItem = ({ item, index }) => {
-//     const isExpanded = expandedItem === index;
-//     return (
-//       <TouchableOpacity onPress={() => handleExpand(index)}>
-//         <View style={{ padding: 10, borderBottomWidth: 1 }}>
-//           <Text style={{ fontSize: 16, fontWeight: 'bold' }}>{item.title}</Text>
-//           {isExpanded && (
-//             <View>
-//               <Text>Salary: {item.salary}</Text>
-//               <Text>Phone: {item.phone}</Text>
-//               <Text>Description: {item.description}</Text>
-//             </View>
-//           )}
-//         </View>
-//       </TouchableOpacity>
-//     );
-//   };
-
-//   const loadMore = () => {
-//     if (!isLoading) {
-//       dispatch(incrementPage());
-//     }
-//   };
-
-//   const retry = async () => {
-//     const netInfo = await NetInfo.fetch();
-//     if (netInfo.isConnected) {
-//       dispatch(resetPage());
-//       dispatch(fetchJobs());
-//     } else {
-//       console.log('No internet connection');
-//     }
-//   };
-
-//   if (isLoading && jobs.length === 0) {
-//     return (
-//       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-//         <ActivityIndicator size="large" />
-//       </View>
-//     );
-//   }
-
-//   if (error) {
-//     return (
-//       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-//         <Text>Error loading jobs. Please try again.</Text>
-//         <Button title="Retry" onPress={retry} />
-//       </View>
-//     );
-//   }
-
-//   return (
-//     <FlatList
-//       data={jobs}
-//       renderItem={renderItem}
-//       keyExtractor={(item) => item.id.toString()}
-//       onEndReached={loadMore}
-//       onEndReachedThreshold={0.5}
-//       ListFooterComponent={isLoading ? <ActivityIndicator size="large" /> : null}
-//       refreshing={false}
-//       onRefresh={() => dispatch(fetchJobs())}
-//     />
-//   );
-// };
-
-// export default JobListScreen;
-
-
-import { View, Text } from 'react-native'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Button, Alert, StyleSheet } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import TextComponent from '../components/TextComponent';
 
 const JobListScreen = () => {
-
   const [loading, setLoading] = useState(false);
+  const [jobs, setJobs] = useState([]);
+  const [expandedItem, setExpandedItem] = useState(null);
+  const [error, setError] = useState(null);
+  const [page, setPage] = useState(1);
+  const [isOffline, setIsOffline] = useState(false);
 
-  const getJobList = async () => {
+  const CACHE_DURATION = 2 * 60 * 60 * 1000;
+
+  const getJobList = useCallback(async (pageNum = 1) => {
+    setLoading(true);
     try {
-      setLoading(true);
-      console.log("Fetching job list...");
+      const cachedData = await AsyncStorage.getItem('cachedJobs');
+      const lastFetchTime = await AsyncStorage.getItem('lastFetchTime');
+      const currentTime = new Date().getTime();
 
-      const response = await axios.get("https://testapi.getlokalapp.com/common/jobs");
+      if (cachedData && lastFetchTime && (currentTime - parseInt(lastFetchTime) < CACHE_DURATION)) {
+        setJobs(JSON.parse(cachedData));
+        setLoading(false);
+        return;
+      }
 
-      console.log("Response:", response.data);
-
-      // alert(response)
-
-      // Handle the response data here
+      console.log("Fetching job list from API...");
+      const response = await axios.get(`https://testapi.getlokalapp.com/common/jobs?page=${pageNum}`);
+      setJobs(response.data.results);
+      await AsyncStorage.setItem('cachedJobs', JSON.stringify(response.data.results));
+      await AsyncStorage.setItem('lastFetchTime', currentTime.toString());
+      setError(null); 
     } catch (error) {
       console.error("Error fetching job list:", error);
-      // Handle the error here (e.g., show a message to the user)
+      setError(error);
     } finally {
       setLoading(false);
-      console.log("Loading complete.");
+    }
+  }, []);
+
+  const handleExpand = (index) => {
+    setExpandedItem(expandedItem === index ? null : index);
+  };
+
+  const renderList = ({ item, index }) => {
+    const isExpanded = expandedItem === index;
+    return (
+      <TouchableOpacity onPress={() => handleExpand(index)} style={styles.itemContainer}>
+        <TextComponent name={item.title} />
+        {isExpanded && (
+          <View>
+            <TextComponent name={`Salary: ${item.salary_max}`} />
+            <TextComponent name={`Phone: ${item.whatsapp_no}`} />
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
+  const loadMore = () => {
+    if (!loading) {
+      setPage((prevPage) => prevPage + 1);
+    }
+  };
+
+  const retry = async () => {
+    const netInfo = await NetInfo.fetch();
+    if (netInfo.isConnected) {
+      setError(null);
+      setPage(1);
+      getJobList(1);
+    } else {
+      Alert.alert('No internet connection', 'Please check your network settings and try again.');
     }
   };
 
   useEffect(() => {
-    getJobList();
-  }, [])
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      setIsOffline(!state.isConnected);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    getJobList(page);
+  }, [page]);
 
   return (
-    <View style={[{ backgroundColor: "white", flex: 1 }]}>
-      <Text>JobListScreen</Text>
+    <View style={styles.container}>
+      {loading && jobs.length === 0 ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" />
+        </View>
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Error loading jobs. Please try again.</Text>
+          <Button title="Retry" onPress={retry} />
+        </View>
+      ) : (
+        <FlatList
+          data={jobs}
+          renderItem={renderList}
+          keyExtractor={(item) => item?.id?.toString()}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={loading ? <ActivityIndicator size="large" /> : null}
+          refreshing={false}
+          onRefresh={() => {
+            setPage(1);
+            getJobList(1);
+          }}
+        />
+      )}
     </View>
-  )
-}
+  );
+};
 
-export default JobListScreen
+const styles = StyleSheet.create({
+  container: {
+    backgroundColor: 'white',
+    flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    marginBottom: 10,
+    color: 'red',
+  },
+  itemContainer: {
+    borderWidth: 1,
+    padding: 10,
+    marginVertical: 5,
+    borderColor: '#ddd',
+  },
+});
+
+export default JobListScreen;

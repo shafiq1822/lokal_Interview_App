@@ -90,35 +90,35 @@ import axios from 'axios';
 
 const JobListScreen = () => {
 
-    const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-    const getJobList = async () => {
-        try {
-            setLoading(true);
-            console.log("Fetching job list...");
+  const getJobList = async () => {
+    try {
+      setLoading(true);
+      console.log("Fetching job list...");
 
-            const response = await axios.get("https://testapi.getlokalapp.com/common/jobs");
+      const response = await axios.get("https://testapi.getlokalapp.com/common/jobs");
 
-            console.log("Response:", response.data);
+      console.log("Response:", response.data);
 
-            // alert(response)
+      // alert(response)
 
-            // Handle the response data here
-        } catch (error) {
-            console.error("Error fetching job list:", error);
-            // Handle the error here (e.g., show a message to the user)
-        } finally {
-            setLoading(false);
-            console.log("Loading complete.");
-        }
-    };
+      // Handle the response data here
+    } catch (error) {
+      console.error("Error fetching job list:", error);
+      // Handle the error here (e.g., show a message to the user)
+    } finally {
+      setLoading(false);
+      console.log("Loading complete.");
+    }
+  };
 
-    useEffect(() => {
-        getJobList();
-    }, [])
+  useEffect(() => {
+    getJobList();
+  }, [])
 
   return (
-    <View style={[{backgroundColor: "white", flex: 1}]}>
+    <View style={[{ backgroundColor: "white", flex: 1 }]}>
       <Text>JobListScreen</Text>
     </View>
   )

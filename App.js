@@ -5,6 +5,9 @@ import { Provider } from 'react-redux';
 import { StatusBar } from 'react-native';
 
 const App = () => {
+
+  console.ignoredYellowBox = true; 
+
   return (
     <Provider store={store}>
       <StatusBar

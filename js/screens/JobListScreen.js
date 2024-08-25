@@ -1,53 +1,79 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Button, Alert, StyleSheet } from 'react-native';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { View, Text, FlatList, ActivityIndicator, Button, Alert, StyleSheet } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-import LinearGradient from 'react-native-linear-gradient';
 import TextComponent from '../components/TextComponent';
-import { Color, Colors } from '../styles/Colors';
-import { borderWidth, customStyles, fontSize, heightH, heightValue, marginPosition, padding, paddingPoistion, radius } from '../styles/Styles';
+import { Colors } from '../styles/Colors';
+import { customStyles, fontSize, heightH, marginPosition, padding, paddingPoistion } from '../styles/Styles';
+import AccordionComponent from '../components/AccodrionComponent';
 
 const JobListScreen = () => {
   const [loading, setLoading] = useState(false);
   const [jobs, setJobs] = useState([]);
-  console.log("jobsData", jobs)
-  const [expandedItem,  ] = useState(null);
+  const [expandedItem, setExpandedItem] = useState(null);
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [isOffline, setIsOffline] = useState(false);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const [hasMoreJobs, setHasMoreJobs] = useState(true);
+  const [loadingBuffer, setLoadingBuffer] = useState(false); 
+  const fetchTimeoutRef = useRef(null);
 
-  const CACHE_DURATION = 2 * 60 * 60 * 1000;
+  const CACHE_DURATION = 2 * 60 * 60 * 1000; 
 
   const getJobList = useCallback(async (pageNum = 1) => {
-    setLoading(true);
+    if (pageNum === 1) {
+      setLoading(true);
+    } else {
+      setIsFetchingMore(true);
+    }
+
     try {
       const cachedData = await AsyncStorage.getItem('cachedJobs');
       const lastFetchTime = await AsyncStorage.getItem('lastFetchTime');
       const currentTime = new Date().getTime();
 
-      if (cachedData && lastFetchTime && (currentTime - parseInt(lastFetchTime) < CACHE_DURATION)) {
-        setJobs(JSON.parse(cachedData));
+      // If offline or cache is vald, load from cache
+      if (isOffline || (cachedData && lastFetchTime && (currentTime - parseInt(lastFetchTime) < CACHE_DURATION) && pageNum === 1)) {
+        setJobs(JSON.parse(cachedData) || []);
         setLoading(false);
         return;
       }
 
+      // Fetch new data if online
       console.log("Fetching job list from API...");
       const response = await axios.get(`https://testapi.getlokalapp.com/common/jobs?page=${pageNum}`);
-      setJobs(response.data.results);
-      await AsyncStorage.setItem('cachedJobs', JSON.stringify(response.data.results));
-      await AsyncStorage.setItem('lastFetchTime', currentTime.toString());
-      setError(null);
+      const newJobs = response.data.results;
+
+      if (newJobs.length > 0) {
+        setJobs(prevJobs => pageNum === 1 ? newJobs : [...prevJobs, ...newJobs]);
+        if (pageNum === 1) {
+          await AsyncStorage.setItem('cachedJobs', JSON.stringify(newJobs));
+          await AsyncStorage.setItem('lastFetchTime', currentTime.toString());
+        }
+        setError(null);
+      } else {
+        setHasMoreJobs(false);
+      }
     } catch (error) {
       console.error("Error fetching job list:", error);
       setError(error);
+
+      // Load cached data if there's an errr fetching from the API
+      const cachedData = await AsyncStorage.getItem('cachedJobs');
+      if (cachedData) {
+        setJobs(JSON.parse(cachedData));
+      }
     } finally {
       setLoading(false);
+      setIsFetchingMore(false);
+      setLoadingBuffer(false); 
     }
-  }, []);
+  }, [isOffline]);
 
   const handleExpand = (index) => {
-     (expandedItem === index ? null : index);
+    setExpandedItem(expandedItem === index ? null : index);
   };
 
   const renderList = ({ item, index }) => {
@@ -55,32 +81,43 @@ const JobListScreen = () => {
       return null;
     }
 
-    const isExpanded = expandedItem === index;
-
     return (
-      <TouchableOpacity onPress={() => handleExpand(index)} style={[styles.itemContainer, radius(8), marginPosition(15, 15, 0, 15)]} key={item.id}>
-        <View>
-          <TextComponent
-            name={item.title.length > 30 ? `${item.title.slice(0, 30)}...` : item.title}
-            style={[fontSize(18), customStyles.fontWeight500]}
-          />
-          {/* Add Icon */}
-        </View>
-
-        {isExpanded && (
-          <View>
-            <TextComponent name={`Salary: ${item.salary_max}`} />
-            <TextComponent name={`Phone: ${item.whatsapp_no}`} />
-          </View>
-        )}
-      </TouchableOpacity>
+      <View key={item.id}>
+        <AccordionComponent
+          title={item.title.length > 37 ? `${item.title.slice(0, 37)}...` : item.title}
+          expanded={expandedItem === index}
+          onToggle={() => handleExpand(index)}
+          style={{ backgroundColor: Colors.darkGray }}
+        >
+          <TextComponent name={item?.title} style={[fontSize(18), customStyles.fontWeight400, { color: Colors.textGray }]} />
+          <TextComponent name={"Salary"} style={[{ color: Colors.secondaryText }, fontSize(12), marginPosition(10)]} />
+          <TextComponent name={item?.salary_max ? "₹" + item?.salary_min.toString() + " - " + "₹" + item?.salary_max.toString() : "N/A"} style={[{ color: Colors.textGray }, marginPosition(0)]} />
+          <TextComponent name={`Phone`} style={[{ color: Colors.secondaryText }, marginPosition(10)]} />
+          <TextComponent name={item?.whatsapp_no ? item?.whatsapp_no : "N/A"} style={[{ color: Colors.textGray }]} />
+          <TextComponent name={`Location`} style={[{ color: Colors.secondaryText }, marginPosition(10)]} />
+          <TextComponent name={item?.primary_details?.Place ? item?.primary_details?.Place : "N/A"} style={[{ color: Colors.textGray }]} />
+          <TextComponent name={`Experience`} style={[{ color: Colors.secondaryText }, marginPosition(10)]} />
+          <TextComponent name={item?.primary_details?.Experience ? item?.primary_details?.Experience : "N/A"} style={[{ color: Colors.textGray }]} />
+        </AccordionComponent>
+      </View>
     );
   };
 
+  const ListFooterComponent = () => (
+    <View style={[heightH(10), customStyles.allCenter]}>
+      <ActivityIndicator size="large" />
+    </View>
+  )
 
   const loadMore = () => {
-    if (!loading) {
-      setPage((prevPage) => prevPage + 1);
+    if (!loading && !isFetchingMore && hasMoreJobs) {
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
+      }
+      setLoadingBuffer(true);
+      fetchTimeoutRef.current = setTimeout(() => {
+        setPage((prevPage) => prevPage + 1);
+      }, 1500);
     }
   };
 
@@ -89,6 +126,7 @@ const JobListScreen = () => {
     if (netInfo.isConnected) {
       setError(null);
       setPage(1);
+      setHasMoreJobs(true);
       getJobList(1);
     } else {
       Alert.alert('No internet connection', 'Please check your network settings and try again.');
@@ -111,11 +149,10 @@ const JobListScreen = () => {
 
   return (
     <View style={styles.mainContainer}>
-      <LinearGradient colors={Colors.backgroundRgb} style={[styles.header, heightH(6.5), padding(20)]}>
+      <View style={[styles.header, heightH(6.5), padding(20), { backgroundColor: Colors.purple }]}>
         <TextComponent name={"Job Listing"} style={[customStyles.white, fontSize(28), { fontWeight: "bold" }]} />
-      </LinearGradient>
-      <View style={[styles.container, paddingPoistion(0, 0, 10)]}>
-
+      </View>
+      <View style={[styles.container]}>
         {loading && jobs.length === 0 ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" />
@@ -132,11 +169,12 @@ const JobListScreen = () => {
             keyExtractor={(item) => item?.id?.toString()}
             onEndReached={loadMore}
             onEndReachedThreshold={0.5}
-            // ListFooterComponent={loading ? <ActivityIndicator size="large" /> : null}
-            contentContainerStyle={[paddingPoistion(0,0,10)]}
+            ListFooterComponent={isFetchingMore || loadingBuffer ? <ListFooterComponent /> : null}
             refreshing={false}
+            contentContainerStyle={[paddingPoistion(0, 0, 15)]}
             onRefresh={() => {
               setPage(1);
+              setHasMoreJobs(true);
               getJobList(1);
             }}
           />
@@ -149,7 +187,7 @@ const JobListScreen = () => {
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    backgroundColor: Colors.offWhite,
+    backgroundColor: Colors.black,
   },
   header: {
     justifyContent: "flex-end"
@@ -171,28 +209,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     color: 'red',
   },
-  itemContainer: {
-    padding: 10,
-    marginVertical: 5,
-    borderColor: '#ddd',
-    backgroundColor: Colors.white,
-    borderRadius: 8,
-    elevation: 3,
-    shadowColor: '#808080', 
-    shadowOffset: { width: 0, height: 2 }, 
-    shadowOpacity: 0.1, 
-    shadowRadius: 3, 
-  },
-  titleContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 10,
-  },
-  contentContainer: {
-    padding: 10,
-  },
 });
-
 
 export default JobListScreen;

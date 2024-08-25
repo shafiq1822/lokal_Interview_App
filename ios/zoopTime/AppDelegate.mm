@@ -2,10 +2,12 @@
 #import <AppCenterReactNative.h>
 #import <AppCenterReactNativeAnalytics.h>
 #import <AppCenterReactNativeCrashes.h>
-#import <CodePush/CodePush.h>
+// #import <CodePush/CodePush.h>
 #import <React/RCTBundleURLProvider.h>
 
+
 @implementation AppDelegate
+
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
@@ -33,5 +35,13 @@
   return [[NSBundle mainBundle] URLForResource:@"main" withExtension:@"jsbundle"];
 #endif
 }
+
+@end
+
+@implementation UIViewController (CustomHomeIndicator)
+- (BOOL)prefersHomeIndicatorAutoHidden {
+  return YES; // Hides the home indicator
+}
+
 
 @end

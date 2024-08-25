@@ -207,12 +207,12 @@ export const customStyles = StyleSheet.create({
     // - - - - - BORDER COLORS - - - - - //
     borderWhite: { borderColor: Colors.white },
     borderBlack: { borderColor: Colors.black },
-    borderGray: { borderColor: Colors.Secondary },
-    borderGrayDark: { borderColor: Colors.borderGrayDark },
-    borderGreen: { borderColor: Colors.green },
-    borderPrimary: { borderColor: Colors.primaryColor },
-    borderBlue: { borderColor: Colors.blue },
-    borderLightBlue: { borderColor: Colors.lightBlue },
+    // borderGray: { borderColor: Colors.Secondary },
+    // borderGrayDark: { borderColor: Colors.borderGrayDark },
+    // borderGreen: { borderColor: Colors.green },
+    // borderPrimary: { borderColor: Colors.primaryColor },
+    // borderBlue: { borderColor: Colors.blue },
+    // borderLightBlue: { borderColor: Colors.lightBlue },
 
     // - - - - - FLEX PROPERTIES - - - - - // 
     // - - -  Flex Align - - -  // 

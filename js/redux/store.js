@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const API_URL = 'https://testapi.getlokalapp.com/common/jobs';
 
 const CACHE_KEY = 'job_cache';
-const CACHE_EXPIRATION_TIME = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+const CACHE_EXPIRATION_TIME = 2 * 60 * 60 * 1000; 
 
 export const fetchJobs = createAsyncThunk('jobs/fetchJobs', async (_, { getState }) => {
   const state = getState().jobs;

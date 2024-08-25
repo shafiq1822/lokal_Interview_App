@@ -5,12 +5,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import LinearGradient from 'react-native-linear-gradient';
 import TextComponent from '../components/TextComponent';
-import { Color } from '../styles/Colors';
+import { Color, Colors } from '../styles/Colors';
+import { borderWidth, customStyles, fontSize, heightH, heightValue, marginPosition, padding, paddingPoistion, radius } from '../styles/Styles';
 
 const JobListScreen = () => {
   const [loading, setLoading] = useState(false);
   const [jobs, setJobs] = useState([]);
-  const [expandedItem, setExpandedItem] = useState(null);
+  console.log("jobsData", jobs)
+  const [expandedItem,  ] = useState(null);
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [isOffline, setIsOffline] = useState(false);
@@ -45,14 +47,26 @@ const JobListScreen = () => {
   }, []);
 
   const handleExpand = (index) => {
-    setExpandedItem(expandedItem === index ? null : index);
+     (expandedItem === index ? null : index);
   };
 
   const renderList = ({ item, index }) => {
+    if (!item.title) {
+      return null;
+    }
+
     const isExpanded = expandedItem === index;
+
     return (
-      <TouchableOpacity onPress={() => handleExpand(index)} style={styles.itemContainer} key={item.id}>
-        <TextComponent name={item.title} />
+      <TouchableOpacity onPress={() => handleExpand(index)} style={[styles.itemContainer, radius(8), marginPosition(15, 15, 0, 15)]} key={item.id}>
+        <View>
+          <TextComponent
+            name={item.title.length > 30 ? `${item.title.slice(0, 30)}...` : item.title}
+            style={[fontSize(18), customStyles.fontWeight500]}
+          />
+          {/* Add Icon */}
+        </View>
+
         {isExpanded && (
           <View>
             <TextComponent name={`Salary: ${item.salary_max}`} />
@@ -62,6 +76,7 @@ const JobListScreen = () => {
       </TouchableOpacity>
     );
   };
+
 
   const loadMore = () => {
     if (!loading) {
@@ -96,9 +111,10 @@ const JobListScreen = () => {
 
   return (
     <View style={styles.mainContainer}>
-      <LinearGradient colors={Color.backgroundRgb} style={styles.header}>
+      <LinearGradient colors={Colors.backgroundRgb} style={[styles.header, heightH(6.5), padding(20)]}>
+        <TextComponent name={"Job Listing"} style={[customStyles.white, fontSize(28), { fontWeight: "bold" }]} />
       </LinearGradient>
-      <View style={styles.container}>
+      <View style={[styles.container, paddingPoistion(0, 0, 10)]}>
 
         {loading && jobs.length === 0 ? (
           <View style={styles.loadingContainer}>
@@ -117,6 +133,7 @@ const JobListScreen = () => {
             onEndReached={loadMore}
             onEndReachedThreshold={0.5}
             // ListFooterComponent={loading ? <ActivityIndicator size="large" /> : null}
+            contentContainerStyle={[paddingPoistion(0,0,10)]}
             refreshing={false}
             onRefresh={() => {
               setPage(1);
@@ -132,14 +149,13 @@ const JobListScreen = () => {
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    backgroundColor: Color.white,
+    backgroundColor: Colors.offWhite,
   },
   header: {
-    height: 100
+    justifyContent: "flex-end"
   },
   container: {
     flex: 1,
-    padding: 20
   },
   loadingContainer: {
     flex: 1,
@@ -156,11 +172,27 @@ const styles = StyleSheet.create({
     color: 'red',
   },
   itemContainer: {
-    borderWidth: 1,
     padding: 10,
     marginVertical: 5,
     borderColor: '#ddd',
+    backgroundColor: Colors.white,
+    borderRadius: 8,
+    elevation: 3,
+    shadowColor: '#808080', 
+    shadowOffset: { width: 0, height: 2 }, 
+    shadowOpacity: 0.1, 
+    shadowRadius: 3, 
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 10,
+  },
+  contentContainer: {
+    padding: 10,
   },
 });
+
 
 export default JobListScreen;

@@ -3,7 +3,9 @@ import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Button, Aler
 import NetInfo from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import LinearGradient from 'react-native-linear-gradient';
 import TextComponent from '../components/TextComponent';
+import { Color } from '../styles/Colors';
 
 const JobListScreen = () => {
   const [loading, setLoading] = useState(false);
@@ -33,7 +35,7 @@ const JobListScreen = () => {
       setJobs(response.data.results);
       await AsyncStorage.setItem('cachedJobs', JSON.stringify(response.data.results));
       await AsyncStorage.setItem('lastFetchTime', currentTime.toString());
-      setError(null); 
+      setError(null);
     } catch (error) {
       console.error("Error fetching job list:", error);
       setError(error);
@@ -49,7 +51,7 @@ const JobListScreen = () => {
   const renderList = ({ item, index }) => {
     const isExpanded = expandedItem === index;
     return (
-      <TouchableOpacity onPress={() => handleExpand(index)} style={styles.itemContainer}>
+      <TouchableOpacity onPress={() => handleExpand(index)} style={styles.itemContainer} key={item.id}>
         <TextComponent name={item.title} />
         {isExpanded && (
           <View>
@@ -93,39 +95,51 @@ const JobListScreen = () => {
   }, [page]);
 
   return (
-    <View style={styles.container}>
-      {loading && jobs.length === 0 ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" />
-        </View>
-      ) : error ? (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Error loading jobs. Please try again.</Text>
-          <Button title="Retry" onPress={retry} />
-        </View>
-      ) : (
-        <FlatList
-          data={jobs}
-          renderItem={renderList}
-          keyExtractor={(item) => item?.id?.toString()}
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.5}
-          ListFooterComponent={loading ? <ActivityIndicator size="large" /> : null}
-          refreshing={false}
-          onRefresh={() => {
-            setPage(1);
-            getJobList(1);
-          }}
-        />
-      )}
+    <View style={styles.mainContainer}>
+      <LinearGradient colors={Color.backgroundRgb} style={styles.header}>
+      </LinearGradient>
+      <View style={styles.container}>
+
+        {loading && jobs.length === 0 ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" />
+          </View>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>Error loading jobs. Please try again.</Text>
+            <Button title="Retry" onPress={retry} />
+          </View>
+        ) : (
+          <FlatList
+            data={jobs}
+            renderItem={renderList}
+            keyExtractor={(item) => item?.id?.toString()}
+            onEndReached={loadMore}
+            onEndReachedThreshold={0.5}
+            // ListFooterComponent={loading ? <ActivityIndicator size="large" /> : null}
+            refreshing={false}
+            onRefresh={() => {
+              setPage(1);
+              getJobList(1);
+            }}
+          />
+        )}
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: 'white',
+  mainContainer: {
     flex: 1,
+    backgroundColor: Color.white,
+  },
+  header: {
+    height: 100
+  },
+  container: {
+    flex: 1,
+    padding: 20
   },
   loadingContainer: {
     flex: 1,
